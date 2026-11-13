@@ -9,6 +9,7 @@
 #include <mach-o/dyld.h>
 #include <spawn.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 extern char **environ;
@@ -24,6 +25,39 @@ MemoryTracker& leakguardTracker() noexcept { return *trackerInstance(true); }
 
 static void track(void* p, std::size_t size, const char* file = "Unknown", int line = 0) noexcept {
     if (!insideHook) { insideHook = true; leakguardTracker().recordAllocation(p, size, file, line); insideHook = false; }
+}
+
+static bool buildDashboard(const char* executable, const char* source) noexcept {
+    const char* prefix = nullptr;
+    if (access("/opt/homebrew/include/SDL2/SDL.h", R_OK) == 0) prefix = "/opt/homebrew";
+    else if (access("/usr/local/include/SDL2/SDL.h", R_OK) == 0) prefix = "/usr/local";
+    if (!prefix) {
+        std::fprintf(stderr, "LeakGuard: SDL2 headers not found; install SDL2 to build the GUI.\n");
+        return false;
+    }
+
+    char includeArg[PATH_MAX], libraryArg[PATH_MAX];
+    std::snprintf(includeArg, sizeof(includeArg), "-I%s/include/SDL2", prefix);
+    std::snprintf(libraryArg, sizeof(libraryArg), "-L%s/lib", prefix);
+    char* const args[] = {
+        const_cast<char*>("clang"), const_cast<char*>("-std=c11"),
+        const_cast<char*>("-Wall"), const_cast<char*>("-Wextra"),
+        includeArg, const_cast<char*>(source), libraryArg,
+        const_cast<char*>("-lSDL2"), const_cast<char*>("-lm"),
+        const_cast<char*>("-o"), const_cast<char*>(executable), nullptr
+    };
+    pid_t child = 0;
+    const int spawnError = posix_spawnp(&child, "clang", nullptr, nullptr, args, environ);
+    if (spawnError != 0) {
+        std::fprintf(stderr, "LeakGuard: could not start clang to build the GUI (error %d).\n", spawnError);
+        return false;
+    }
+    int childStatus = 0;
+    if (waitpid(child, &childStatus, 0) < 0 || !WIFEXITED(childStatus) || WEXITSTATUS(childStatus) != 0) {
+        std::fprintf(stderr, "LeakGuard: GUI build failed; the CSV report is still saved.\n");
+        return false;
+    }
+    return access(executable, X_OK) == 0;
 }
 
 static void finishSession() noexcept {
@@ -44,9 +78,10 @@ static void finishSession() noexcept {
     char* slash = std::strrchr(resolved, '/');
     if (!slash) { insideHook = false; return; }
     *slash = '\0';
-    char reportPath[PATH_MAX], guiPath[PATH_MAX];
+    char reportPath[PATH_MAX], guiPath[PATH_MAX], guiSource[PATH_MAX];
     std::snprintf(reportPath, sizeof(reportPath), "%s/leakguard_report.csv", resolved);
     std::snprintf(guiPath, sizeof(guiPath), "%s/leakguard_gui", resolved);
+    std::snprintf(guiSource, sizeof(guiSource), "%s/LeakGuardGUI.c", resolved);
     if (!tracker->exportCSV(reportPath)) {
         std::fprintf(stderr, "LeakGuard: could not write report: %s\n", reportPath);
         insideHook = false;
@@ -54,14 +89,15 @@ static void finishSession() noexcept {
     }
     insideHook = false;
 
-    if (access(guiPath, X_OK) == 0) {
-        pid_t child = 0;
-        char* const args[] = {guiPath, nullptr};
-        if (posix_spawn(&child, guiPath, nullptr, nullptr, args, environ) != 0)
-            std::fprintf(stderr, "LeakGuard: report saved, but the GUI could not be opened.\n");
-    } else {
-        std::fprintf(stderr, "LeakGuard: report saved. Build leakguard_gui beside this test executable to open the dashboard.\n");
+    if (access(guiSource, R_OK) != 0) {
+        std::fprintf(stderr, "LeakGuard: report saved, but LeakGuardGUI.c is missing beside the test executable.\n");
+        return;
     }
+    if (!buildDashboard(guiPath, guiSource)) return;
+    pid_t child = 0;
+    char* const args[] = {guiPath, nullptr};
+    if (posix_spawn(&child, guiPath, nullptr, nullptr, args, environ) != 0)
+        std::fprintf(stderr, "LeakGuard: report saved, but the GUI could not be opened.\n");
 }
 
 struct LeakGuardShutdown {

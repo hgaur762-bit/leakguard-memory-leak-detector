@@ -5,11 +5,13 @@
 // so that STL internal allocations are not rewritten by the macro.
 #include "LeakGuard.h"
 
-// Allow standalone single-file compilation with VS Code's Run / Play button
-// (which executes: g++ demo.cpp -o demo)
+// Allow standalone Code Runner builds; VS Code's configured build links the
+// implementation separately instead.
+#ifndef LEAKGUARD_LINKED_SEPARATELY
 #undef new
 #include "MemoryLeakDetector.cpp"
 #define new new(__FILE__, __LINE__)
+#endif
 
 // Example custom struct
 struct SensorData {

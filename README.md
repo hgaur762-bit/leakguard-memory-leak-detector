@@ -13,15 +13,14 @@ LeakGuard is an educational C++ memory tracking project with a custom hash table
 
 ## Build and run (macOS with SDL2)
 
-Build the C/SDL2 dashboard once and keep it beside the test executable. After that, running the test executable is the only step: when the test process exits, LeakGuard writes `leakguard_report.csv` and opens the dashboard automatically.
+Install SDL2 with Homebrew if needed: `brew install sdl2`. Build a test program with the LeakGuard implementation, then run it:
 
 ```sh
-clang -std=c11 -Wall -Wextra -I/opt/homebrew/include/SDL2 LeakGuardGUI.c -L/opt/homebrew/lib -lSDL2 -lm -o leakguard_gui
-clang++ -std=c++17 -Wall -Wextra -pedantic test.cpp MemoryLeakDetector.cpp -o leakguard_tests
-./leakguard_tests
+clang++ -std=c++17 -Wall -Wextra -pedantic test_dynamic_allocation.cpp MemoryLeakDetector.cpp -o test_dynamic_allocation
+./test_dynamic_allocation
 ```
 
-Install SDL2 with Homebrew if needed: `brew install sdl2`. Any additional C++ test program that includes `LeakGuard.h` and links `MemoryLeakDetector.cpp` gets the same automatic report and GUI launch at process exit. The GUI executable must be next to the test executable.
+At normal program exit, LeakGuard writes `leakguard_report.csv`, compiles `LeakGuardGUI.c` into `leakguard_gui`, and launches the dashboard automatically. VS Code's Code Runner setting builds the active C++ source with the tracker; its shutdown hook builds and opens the GUI. The GUI needs SDL2 headers and libraries at `/opt/homebrew` or `/usr/local`.
 
 ## Platform note
 
@@ -33,4 +32,4 @@ Include `LeakGuard.h` and allocate with `new`. The default `new` macro records t
 
 ## Design notes and limitations
 
-A repeated or unknown free is rejected by the explicit `MemoryTracker::recordDeallocation` API and counted in the report. The global delete hook avoids releasing an already-recorded pointer twice. Passing an arbitrary invalid pointer to the language-level `delete` operator is undefined behavior in C++; use the explicit tracker API to validate suspect addresses safely. The C++ test executable writes `leakguard_report.csv` and automatically starts the dashboard at shutdown when `leakguard_gui` is beside it. If the GUI has not been built, the report is still saved and a message explains that the GUI is missing. The test includes one intentional leaked allocation to demonstrate the leak state. This is an educational process-wide hook, not a production performance profiler. Allocation hooks cover ordinary and array `new`/`delete`; over-aligned allocations are not intercepted yet.
+A repeated or unknown free is rejected by the explicit `MemoryTracker::recordDeallocation` API and counted in the report. The global delete hook avoids releasing an already-recorded pointer twice. Passing an arbitrary invalid pointer to the language-level `delete` operator is undefined behavior in C++; use the explicit tracker API to validate suspect addresses safely. The test includes one intentional leaked allocation to demonstrate the leak state. This is an educational process-wide hook, not a production performance profiler. Allocation hooks cover ordinary and array `new`/`delete`; over-aligned allocations are not intercepted yet.
