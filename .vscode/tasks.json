@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "LeakGuard: Build C GUI",
+      "command": "/usr/bin/clang",
+      "args": [
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-I/opt/homebrew/include/SDL2",
+        "${workspaceFolder}/LeakGuardGUI.c",
+        "-L/opt/homebrew/lib",
+        "-lSDL2",
+        "-lm",
+        "-o",
+        "${workspaceFolder}/leakguard_gui"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "type": "shell",
+      "label": "C/C++: Build and link LeakGuard test",
+      "command": "/usr/bin/clang++",
+      "args": [
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-g",
+        "-DLEAKGUARD_LINKED_SEPARATELY",
+        "${file}",
+        "${workspaceFolder}/MemoryLeakDetector.cpp",
+        "-o",
+        "${fileDirname}/${fileBasenameNoExtension}"
+      ],
+      "options": { "cwd": "${fileDirname}" },
+      "problemMatcher": ["$gcc"],
+      "group": { "kind": "build", "isDefault": true },
+      "detail": "Links the active C++ test with LeakGuard hooks; the shutdown hook builds and opens the dashboard automatically."
+    }
+  ]
+}
