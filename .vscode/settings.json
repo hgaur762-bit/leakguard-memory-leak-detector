@@ -1,0 +1,9 @@
+{
+  "code-runner.executorMap": {
+    "cpp": "cd \"$dir\" && clang++ -std=c++17 -Wall -Wextra -g -DLEAKGUARD_LINKED_SEPARATELY \"$fileName\" MemoryLeakDetector.cpp -o \"$fileNameWithoutExt\" && \"./$fileNameWithoutExt\""
+  },
+  "code-runner.runSelection": false,
+  "code-runner.ignoreSelection": true,
+  "code-runner.clearPreviousOutput": true,
+  "code-runner.saveFileBeforeRun": true
+}
