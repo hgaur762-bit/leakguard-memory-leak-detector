@@ -87,7 +87,7 @@ int main() {
 
     std::printf("Allocated value: %d\n", *leakedNumber);
 
-    // Intentionally do not delete leakedNumber; LeakGuard should report this 4-byte leak.
+
 
 
     std::printf("\n===== TEST PROGRAM FINISHED =====\n");
