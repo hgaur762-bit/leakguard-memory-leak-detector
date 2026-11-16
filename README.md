@@ -8,7 +8,13 @@ LeakGuard is an educational C++ memory tracking project with a custom hash table
 - Uses a fixed custom hash table with separate chaining for average constant-time address lookup.
 - Keeps a singly linked list for complete report traversal.
 - Reports active leaks, totals, repeated deallocation attempts, and unknown-address frees.
-- Includes a C + SDL2 dashboard with allocation charts and three interactive demo scenarios (`1`–`3`).
+- Includes a C + SDL2 dashboard with a two-bar chart showing actual total allocated and deallocated blocks, plus three interactive demo scenarios (`1`–`3`).
+
+## Dashboard preview
+
+The chart compares total allocated blocks (blue) with total deallocated blocks (red). These bars show totals for the selected live report or demo scenario, not time intervals.
+
+![LeakGuard dashboard preview](gui_preview.png)
 - Includes focused checks for hash lookup and free validation.
 
 ## Build and run (macOS with SDL2)

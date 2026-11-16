@@ -1,8 +1,7 @@
 /*
- * LeakGuard — Minimalist Monochrome Dashboard
+ * LeakGuard — Colorful Memory Dashboard
  * Built with C11 & SDL2.
- * Pure Black & White typography and graphs with nuanced grey tones.
- * High-end glassmorphism, specular highlights, and monochrome telemetry.
+ * Cool navy surfaces with blue, red, and yellow telemetry accents.
  */
 
 #include <SDL.h>
@@ -267,14 +266,21 @@ static void draw_pill(SDL_Renderer* r, int x, int y, int w, int h, bool bright, 
 /*  MAIN RENDER PIPELINE                                                     */
 /* ========================================================================= */
 static void draw(SDL_Renderer* r) {
-    const SDL_Color c_bg       = Gray(4);        // Pitch Black
-    const SDL_Color c_white    = Gray(255);      // Pure 100% White
-    const SDL_Color c_silver   = Gray(215);      // Silver / Light Gray
-    const SDL_Color c_muted    = Gray(130);      // Mid Gray
+    const SDL_Color c_bg       = RGBA(13, 20, 34, 255);
+    const SDL_Color c_white    = RGBA(239, 245, 255, 255);
+    const SDL_Color c_silver   = RGBA(185, 201, 222, 255);
+    const SDL_Color c_muted    = RGBA(128, 149, 177, 255);
 
-    // 1. Pure Obsidian Black Canvas
+    // 1. Deep navy canvas with a soft blue glow behind the dashboard
     SDL_SetRenderDrawColor(r, c_bg.r, c_bg.g, c_bg.b, 255);
     SDL_RenderClear(r);
+    for (int i = 0; i < 180; i++) {
+        int alpha = 14 - i / 16;
+        if (alpha < 0) alpha = 0;
+        SDL_SetRenderDrawColor(r, 28, 79, 132, alpha);
+        SDL_Rect glow = {W - 300 - i, 90 - i / 2, 300 + i * 2, 300 + i};
+        SDL_RenderFillRect(r, &glow);
+    }
 
     // -------------------------------------------------------------------------
     // 2. Top Header & Engine Status
@@ -306,7 +312,7 @@ static void draw(SDL_Renderer* r) {
     int leakBytes    = showingLive ? liveLeakedBytes : scn->leakedBytes;
 
     // -------------------------------------------------------------------------
-    // 4. Four Glossy Monochrome KPI Cards
+    // 4. Four Glossy KPI Cards
     // -------------------------------------------------------------------------
     int cardY = 96;
     int cardW = 265;
@@ -365,10 +371,10 @@ static void draw(SDL_Renderer* r) {
     int rightW = W - 48 - leftW - 16;
     int rightX = 24 + leftW + 16;
 
-    // --- Panel A: Allocation Dynamics (Black & White Bar Chart) ---
+    // --- Panel A: Allocation Dynamics (Blue & Red Bar Chart) ---
     draw_glass_card(r, 24, midY, leftW, midH, 12, false);
     draw_text(r, 44, midY + 18, "ALLOCATION DYNAMICS", 2, c_white);
-    draw_text(r, 44, midY + 38, "CHRONOLOGICAL MEMORY FLOW: ALLOCATED (WHITE) VS RELEASED (GREY)", 1, c_muted);
+    draw_text(r, 44, midY + 38, "TOTAL MEMORY BLOCKS: ALLOCATED (BLUE) VS DEALLOCATED (RED)", 1, c_muted);
 
     // Subtle horizontal grid lines
     int chartBaseY = midY + 215;
@@ -379,71 +385,59 @@ static void draw(SDL_Renderer* r) {
         SDL_RenderDrawLine(r, 60, gy, 24 + leftW - 40, gy);
     }
 
-    // Bars: 5 Intervals (T1 to T5)
-    int intervals = 5;
-    int groupWidth = (leftW - 120) / intervals;
-    int maxBlock = allocCount > 0 ? allocCount : 1;
+    // Two bars show the actual totals from the live report or selected scenario.
+    int maxBlock = allocCount > freedCount ? allocCount : freedCount;
+    if (maxBlock < 1) maxBlock = 1;
+    int barW = 72;
+    int allocX = 250;
+    int freedX = 390;
+    int hA = (int)((double)allocCount / maxBlock * chartMaxH);
+    int hF = (int)((double)freedCount / maxBlock * chartMaxH);
 
-    for (int i = 0; i < intervals; i++) {
-        int gx = 70 + i * groupWidth;
-
-        int aVal = (allocCount * (i + 2)) / (intervals + 1);
-        int fVal = (freedCount * (i + 1)) / (intervals + 1);
-        if (aVal > allocCount) aVal = allocCount;
-        if (fVal > freedCount) fVal = freedCount;
-
-        int hA = (int)((double)aVal / maxBlock * chartMaxH);
-        int hF = (int)((double)fVal / maxBlock * chartMaxH);
-        if (hA < 4 && aVal > 0) hA = 4;
-        if (hF < 4 && fVal > 0) hF = 4;
-
-        int barW = 28;
-
-        // Bar 1: Allocated (Glossy Pure White with gradient)
-        if (hA > 0) {
-            for (int dy = 0; dy < hA; dy++) {
-                double t = (double)dy / hA;
-                int lum = (int)(110 + (255 - 110) * t);
-                SDL_SetRenderDrawColor(r, lum, lum, lum, 240);
-                SDL_RenderDrawLine(r, gx, chartBaseY - dy, gx + barW - 1, chartBaseY - dy);
-            }
-            // Specular top highlight cap
-            SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
-            SDL_RenderDrawLine(r, gx, chartBaseY - hA, gx + barW - 1, chartBaseY - hA);
+    if (hA > 0) {
+        for (int dy = 0; dy < hA; dy++) {
+            double t = (double)dy / hA;
+            int red = (int)(35 + (75 - 35) * t);
+            int green = (int)(105 + (180 - 105) * t);
+            int blue = (int)(190 + (65 * t));
+            SDL_SetRenderDrawColor(r, red, green, blue, 245);
+            SDL_RenderDrawLine(r, allocX, chartBaseY - dy, allocX + barW - 1, chartBaseY - dy);
         }
-
-        // Bar 2: Released (Glossy Subtle Grey with gradient)
-        int fx = gx + barW + 6;
-        if (hF > 0) {
-            for (int dy = 0; dy < hF; dy++) {
-                double t = (double)dy / hF;
-                int lum = (int)(40 + (100 - 40) * t);
-                SDL_SetRenderDrawColor(r, lum, lum, lum, 220);
-                SDL_RenderDrawLine(r, fx, chartBaseY - dy, fx + barW - 1, chartBaseY - dy);
-            }
-            // Top specular cap in light grey
-            SDL_SetRenderDrawColor(r, 160, 160, 160, 255);
-            SDL_RenderDrawLine(r, fx, chartBaseY - hF, fx + barW - 1, chartBaseY - hF);
-        }
-
-        // Stage label
-        char tLbl[8];
-        snprintf(tLbl, sizeof(tLbl), "T%d", i + 1);
-        draw_text(r, gx + barW / 2 + 2, chartBaseY + 12, tLbl, 1, c_muted);
+        SDL_SetRenderDrawColor(r, 125, 205, 255, 255);
+        SDL_RenderDrawLine(r, allocX, chartBaseY - hA, allocX + barW - 1, chartBaseY - hA);
     }
 
-    // Chart Legend: Black, White & Grey
-    fill_rounded_rect(r, leftW - 230, midY + 22, 10, 10, 2, c_white);
+    if (hF > 0) {
+        for (int dy = 0; dy < hF; dy++) {
+            double t = (double)dy / hF;
+            int red = (int)(170 + (85 * t));
+            int green = (int)(48 + (52 * t));
+            int blue = (int)(67 + (48 * t));
+            SDL_SetRenderDrawColor(r, red, green, blue, 235);
+            SDL_RenderDrawLine(r, freedX, chartBaseY - dy, freedX + barW - 1, chartBaseY - dy);
+        }
+        SDL_SetRenderDrawColor(r, 255, 150, 150, 255);
+        SDL_RenderDrawLine(r, freedX, chartBaseY - hF, freedX + barW - 1, chartBaseY - hF);
+    }
+
+    char allocLabel[32], freedLabel[32];
+    snprintf(allocLabel, sizeof(allocLabel), "ALLOCATED: %d", allocCount);
+    snprintf(freedLabel, sizeof(freedLabel), "DEALLOCATED: %d", freedCount);
+    draw_text(r, allocX - 20, chartBaseY + 12, allocLabel, 1, c_muted);
+    draw_text(r, freedX - 20, chartBaseY + 12, freedLabel, 1, c_muted);
+
+    // Chart Legend: Blue and Red
+    fill_rounded_rect(r, leftW - 230, midY + 22, 10, 10, 2, RGBA(65, 155, 255, 255));
     draw_text(r, leftW - 214, midY + 23, "ALLOCATED", 1, c_silver);
-    fill_rounded_rect(r, leftW - 130, midY + 22, 10, 10, 2, Gray(90));
-    draw_text(r, leftW - 114, midY + 23, "RELEASED", 1, c_silver);
+    fill_rounded_rect(r, leftW - 130, midY + 22, 10, 10, 2, RGBA(255, 92, 105, 255));
+    draw_text(r, leftW - 114, midY + 23, "DEALLOCATED", 1, c_silver);
 
     // --- Panel B: Session Health & Radial Donut Gauge ---
     draw_glass_card(r, rightX, midY, rightW, midH, 12, false);
     draw_text(r, rightX + 20, midY + 18, "SESSION HEALTH", 2, c_white);
     draw_text(r, rightX + 20, midY + 38, "RETENTION EFFICIENCY", 1, c_muted);
 
-    // High-tech Radial Segment Donut (Monochrome)
+    // High-tech Radial Segment Donut (yellow recovery arc)
     int donutCX = rightX + rightW / 2;
     int donutCY = midY + 130;
     int numPips = 48;
@@ -455,7 +449,7 @@ static void draw(SDL_Renderer* r) {
         double a = deg * M_PI / 180.0;
         int px = donutCX + (int)(64.0 * cos(a));
         int py = donutCY + (int)(64.0 * sin(a));
-        SDL_SetRenderDrawColor(r, 255, 255, 255, 12);
+        SDL_SetRenderDrawColor(r, 255, 207, 75, 28);
         SDL_RenderDrawPoint(r, px, py);
     }
 
@@ -470,24 +464,22 @@ static void draw(SDL_Renderer* r) {
         int y2 = donutCY + (int)(rOuter * sin(angle));
 
         if (p < activePips) {
-            // Pure White for recovered blocks
-            SDL_SetRenderDrawColor(r, 255, 255, 255, 240);
+            SDL_SetRenderDrawColor(r, 255, 207, 75, 245);
         } else {
-            // Dark Grey for unreleased blocks
-            SDL_SetRenderDrawColor(r, 60, 60, 60, 180);
+            SDL_SetRenderDrawColor(r, 64, 76, 94, 220);
         }
         SDL_RenderDrawLine(r, x1, y1, x2, y2);
     }
 
-    // Centered percentage: Pure White
+    // Centered percentage: warm yellow
     char pctStr[16];
     int pctVal = (int)(releaseRatio * 100.0);
     snprintf(pctStr, sizeof(pctStr), "%d%%", pctVal);
     int pW = (int)strlen(pctStr) * 12;
-    draw_text(r, donutCX - pW / 2, donutCY - 14, pctStr, 2, c_white);
+    draw_text(r, donutCX - pW / 2, donutCY - 14, pctStr, 2, RGBA(255, 218, 112, 255));
     draw_text(r, donutCX - 24, donutCY + 8, "RECOVERY", 1, c_muted);
 
-    // Health status pill in monochrome
+    // Health status pill uses yellow to match the recovery gauge
     if (leakCount == 0) {
         draw_pill(r, donutCX - 65, midY + 218, 130, 26, true, "OPTIMAL");
     } else {
